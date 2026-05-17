@@ -4,11 +4,12 @@ pipeline {
     agent { label 'builder' }
 
     environment {
-        GITHUB_REPO  = 'lobonikhil43/devops_2026'
+        GITHUB_REPO = 'lobonikhil43/devops_2026'
         PATH = "$HOME/.local/bin:$PATH"
     }
 
     stages {
+
         stage('Agent Details') {
             steps {
                 agentDetails()
@@ -17,73 +18,79 @@ pipeline {
 
         stage('Lint') {
             parallel {
+
                 stage('Dockerfile') {
                     steps {
                         script {
                             try {
                                 lintDockerfile()
                                 env.DOCKERFILE_STATUS = '✅ PASSED'
-                            } catch(e) {
+                            } catch (e) {
                                 env.DOCKERFILE_STATUS = '❌ FAILED'
                             }
                         }
                     }
                 }
+
                 stage('Python') {
                     steps {
                         script {
                             try {
                                 lintPython()
                                 env.PYTHON_STATUS = '✅ PASSED'
-                            } catch(e) {
+                            } catch (e) {
                                 env.PYTHON_STATUS = '❌ FAILED'
                             }
                         }
                     }
                 }
+
                 stage('Bash') {
                     steps {
                         script {
                             try {
                                 lintBash()
-                                env.BASH_STATUS = '✅ PASSED'
-                            } catch(e) {
+                                env.BASH_STATUS = '❌ FAILED'
+                            } catch (e) {
                                 env.BASH_STATUS = '❌ FAILED'
                             }
                         }
                     }
                 }
+
                 stage('Groovy') {
                     steps {
                         script {
                             try {
                                 lintGroovy()
                                 env.GROOVY_STATUS = '✅ PASSED'
-                            } catch(e) {
+                            } catch (e) {
                                 env.GROOVY_STATUS = '❌ FAILED'
                             }
                         }
                     }
                 }
+
                 stage('JSON') {
                     steps {
                         script {
                             try {
                                 lintJson()
                                 env.JSON_STATUS = '✅ PASSED'
-                            } catch(e) {
+                            } catch (e) {
                                 env.JSON_STATUS = '❌ FAILED'
                             }
                         }
                     }
                 }
+
                 stage('YAML') {
                     steps {
                         script {
                             try {
                                 lintYaml()
                                 env.YAML_STATUS = '✅ PASSED'
-                            } catch(e) {
+                            } catch (e) {
                                 env.YAML_STATUS = '❌ FAILED'
                             }
                         }
@@ -95,35 +102,41 @@ pipeline {
         stage('PR Comment') {
             steps {
                 script {
-                    def allPassed = 
-                        env.DOCKERFILE_STATUS.contains('PASSED') &&
-                        env.PYTHON_STATUS.contains('PASSED')     &&
-                        env.BASH_STATUS.contains('PASSED')       &&
-                        env.GROOVY_STATUS.contains('PASSED')     &&
-                        env.JSON_STATUS.contains('PASSED')       &&
-                        env.YAML_STATUS.contains('PASSED')
 
-                    def status  = allPassed ? '✅ All checks passed — Ready to merge!' : '❌ Some checks failed — Please fix lint errors!'
+                    def allPassed =
+                        (env.DOCKERFILE_STATUS ?: '').contains('PASSED') &&
+                        (env.PYTHON_STATUS ?: '').contains('PASSED') &&
+                        (env.BASH_STATUS ?: '').contains('PASSED') &&
+                        (env.GROOVY_STATUS ?: '').contains('PASSED') &&
+                        (env.JSON_STATUS ?: '').contains('PASSED') &&
+                        (env.YAML_STATUS ?: '').contains('PASSED')
+
+                    def status = allPassed
+                        ? '✅ All checks passed — Ready to merge!'
+                        : '❌ Some checks failed — Please fix lint errors!'
 
                     def message = """
-## 🔍 Jenkins Lint Review\\n\\n
-| File Type  | Status |\\n
-|------------|--------|\\n
-| Dockerfile | ${env.DOCKERFILE_STATUS} |\\n
-| Python     | ${env.PYTHON_STATUS}     |\\n
-| Bash       | ${env.BASH_STATUS}       |\\n
-| Groovy     | ${env.GROOVY_STATUS}     |\\n
-| JSON       | ${env.JSON_STATUS}       |\\n
-| YAML       | ${env.YAML_STATUS}       |\\n\\n
-### ${status}\\n
+## 🔍 Jenkins Lint Review
+
+| File Type  | Status |
+|------------|--------|
+| Dockerfile | ${env.DOCKERFILE_STATUS} |
+| Python     | ${env.PYTHON_STATUS} |
+| Bash       | ${env.BASH_STATUS} |
+| Groovy     | ${env.GROOVY_STATUS} |
+| JSON       | ${env.JSON_STATUS} |
+| YAML       | ${env.YAML_STATUS} |
+
+### ${status}
+
 > Build: ${env.BUILD_URL}
-                    """.trim()
+""".trim()
 
                     githubComment(
-                        credentialsId : 'github-token',
-                        repo          : env.GITHUB_REPO,
-                        prNumber      : env.CHANGE_ID,
-                        message       : message
+                        credentialsId: 'github-token',
+                        repo: env.GITHUB_REPO,
+                        prNumber: env.CHANGE_ID,
+                        message: message
                     )
                 }
             }
@@ -132,27 +145,33 @@ pipeline {
         stage('Merge') {
             when {
                 expression {
-                    return env.DOCKERFILE_STATUS.contains('PASSED') &&
-                           env.PYTHON_STATUS.contains('PASSED')     &&
-                           env.BASH_STATUS.contains('PASSED')       &&
-                           env.GROOVY_STATUS.contains('PASSED')     &&
-                           env.JSON_STATUS.contains('PASSED')       &&
-                           env.YAML_STATUS.contains('PASSED')
+                    return (env.DOCKERFILE_STATUS ?: '').contains('PASSED') &&
+                           (env.PYTHON_STATUS ?: '').contains('PASSED') &&
+                           (env.BASH_STATUS ?: '').contains('PASSED') &&
+                           (env.GROOVY_STATUS ?: '').contains('PASSED') &&
+                           (env.JSON_STATUS ?: '').contains('PASSED') &&
+                           (env.YAML_STATUS ?: '').contains('PASSED')
                 }
             }
+
             steps {
                 sh '''#!/bin/bash
                     set +x
-                    exec 2>/dev/null
+
                     echo "=============================="
                     echo "  ✅ All checks passed!"
                     echo "  🔀 Merging PR to main..."
                     echo "=============================="
+
                     git config user.email "jenkins@local"
                     git config user.name "jenkins-bot"
+
                     git checkout main
-                    git merge --no-ff $GIT_BRANCH -m "Auto merge: all lint checks passed"
+                    git pull origin main
+                    git merge --no-ff origin/${CHANGE_BRANCH} -m "Auto merge: all lint checks passed"
+
                     git push origin main
+
                     echo "  ✅ Merged successfully!"
                 '''
             }
@@ -163,13 +182,14 @@ pipeline {
         success {
             echo '✅ Review passed - PR merged to main!'
         }
+
         failure {
             script {
                 githubComment(
-                    credentialsId : 'github-token',
-                    repo          : env.GITHUB_REPO,
-                    prNumber      : env.CHANGE_ID,
-                    message       : '❌ Jenkins build failed — check build logs: ' + env.BUILD_URL
+                    credentialsId: 'github-token',
+                    repo: env.GITHUB_REPO,
+                    prNumber: env.CHANGE_ID,
+                    message: "❌ Jenkins build failed — check logs: ${env.BUILD_URL}"
                 )
             }
         }
