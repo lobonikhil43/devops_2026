@@ -1,7 +1,7 @@
 @Library('devops_2026') _
 
 pipeline {
-    agent any
+    agent { label 'builder' }
 
     parameters {
         string(
