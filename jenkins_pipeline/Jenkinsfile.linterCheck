@@ -23,10 +23,7 @@ pipeline {
                     steps {
                         script {
                             env.DOCKERFILE_STATUS = '❌ FAILED'
-                            try {
-                                lintDockerfile()
-                                env.DOCKERFILE_STATUS = '✅ PASSED'
-                            } catch (e) {}
+                            try { lintDockerfile(); env.DOCKERFILE_STATUS = '✅ PASSED' } catch (e) {}
                         }
                     }
                 }
@@ -35,10 +32,7 @@ pipeline {
                     steps {
                         script {
                             env.PYTHON_STATUS = '❌ FAILED'
-                            try {
-                                lintPython()
-                                env.PYTHON_STATUS = '✅ PASSED'
-                            } catch (e) {}
+                            try { lintPython(); env.PYTHON_STATUS = '✅ PASSED' } catch (e) {}
                         }
                     }
                 }
@@ -47,10 +41,7 @@ pipeline {
                     steps {
                         script {
                             env.BASH_STATUS = '❌ FAILED'
-                            try {
-                                lintBash()
-                                env.BASH_STATUS = '✅ PASSED'
-                            } catch (e) {}
+                            try { lintBash(); env.BASH_STATUS = '✅ PASSED' } catch (e) {}
                         }
                     }
                 }
@@ -59,10 +50,7 @@ pipeline {
                     steps {
                         script {
                             env.GROOVY_STATUS = '❌ FAILED'
-                            try {
-                                lintGroovy()
-                                env.GROOVY_STATUS = '✅ PASSED'
-                            } catch (e) {}
+                            try { lintGroovy(); env.GROOVY_STATUS = '✅ PASSED' } catch (e) {}
                         }
                     }
                 }
@@ -71,10 +59,7 @@ pipeline {
                     steps {
                         script {
                             env.JSON_STATUS = '❌ FAILED'
-                            try {
-                                lintJson()
-                                env.JSON_STATUS = '✅ PASSED'
-                            } catch (e) {}
+                            try { lintJson(); env.JSON_STATUS = '✅ PASSED' } catch (e) {}
                         }
                     }
                 }
@@ -83,10 +68,7 @@ pipeline {
                     steps {
                         script {
                             env.YAML_STATUS = '❌ FAILED'
-                            try {
-                                lintYaml()
-                                env.YAML_STATUS = '✅ PASSED'
-                            } catch (e) {}
+                            try { lintYaml(); env.YAML_STATUS = '✅ PASSED' } catch (e) {}
                         }
                     }
                 }
@@ -94,8 +76,14 @@ pipeline {
         }
 
         stage('PR Comment') {
+            when {
+                expression { return env.CHANGE_ID != null }
+            }
+
             steps {
                 script {
+
+                    def prNumber = env.CHANGE_ID
 
                     def allPassed =
                         (env.DOCKERFILE_STATUS ?: '').contains('PASSED') &&
@@ -112,8 +100,8 @@ pipeline {
                     def message = """
 ## 🔍 Jenkins Lint Report
 
-|    Type    |   Status  |
-|------------|-----------|
+| Type | Status |
+|------|--------|
 | Dockerfile | ${env.DOCKERFILE_STATUS} |
 | Python     | ${env.PYTHON_STATUS} |
 | Bash       | ${env.BASH_STATUS} |
@@ -128,22 +116,27 @@ Build: ${env.BUILD_URL}
 
                     withCredentials([string(credentialsId: 'github-token', variable: 'GITHUB_TOKEN')]) {
 
-                        sh '''
+                        sh """
                             set +e
 
-                            PAYLOAD=$(jq -n --arg msg "$MESSAGE" '{body: $msg}')
+                            echo "Posting PR comment for PR: ${prNumber}"
+
+                            MESSAGE='''${message}'''
+
+                            # escape quotes safely
+                            SAFE_MESSAGE=\$(printf '%s' "\$MESSAGE" | sed 's/"/\\\\\\"/g')
 
                             curl -s -o response.json -w "%{http_code}" \
-                                -X POST \
-                                -H "Authorization: token $GITHUB_TOKEN" \
-                                -H "Accept: application/vnd.github+json" \
-                                -H "Content-Type: application/json" \
-                                -d "$PAYLOAD" \
-                                "https://api.github.com/repos/$GITHUB_REPO/issues/$CHANGE_ID/comments"
+                              -X POST \
+                              -H "Authorization: token $GITHUB_TOKEN" \
+                              -H "Accept: application/vnd.github+json" \
+                              -H "Content-Type: application/json" \
+                              -d "{\\\"body\\\": \\\"\$SAFE_MESSAGE\\\"}" \
+                              "https://api.github.com/repos/${GITHUB_REPO}/issues/${prNumber}/comments"
 
                             echo "Response:"
                             cat response.json
-                        '''
+                        """
                     }
                 }
             }
