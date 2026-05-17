@@ -6,6 +6,7 @@ pipeline {
     environment {
         GITHUB_TOKEN = credentials('github-credentials')
         GITHUB_REPO  = 'lobonikhil43/devops_2026'
+        PATH = "$HOME/.local/bin:$PATH"
     }
 
     stages {
@@ -120,10 +121,10 @@ pipeline {
                     """.trim()
 
                     githubComment(
-                        token    : env.GITHUB_TOKEN,
-                        repo     : env.GITHUB_REPO,
-                        prNumber : env.CHANGE_ID,
-                        message  : message
+                        credentialsId : 'github-credentials',
+                        repo          : env.GITHUB_REPO,
+                        prNumber      : env.CHANGE_ID,
+                        message       : message
                     )
                 }
             }
@@ -166,10 +167,10 @@ pipeline {
         failure {
             script {
                 githubComment(
-                    token    : env.GITHUB_TOKEN,
-                    repo     : env.GITHUB_REPO,
-                    prNumber : env.CHANGE_ID,
-                    message  : '❌ Jenkins build failed — check build logs: ' + env.BUILD_URL
+                    credentialsId : 'github-credentials',
+                    repo          : env.GITHUB_REPO,
+                    prNumber      : env.CHANGE_ID,
+                    message       : '❌ Jenkins build failed — check build logs: ' + env.BUILD_URL
                 )
             }
         }

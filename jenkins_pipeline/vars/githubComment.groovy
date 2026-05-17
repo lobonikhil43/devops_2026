@@ -1,17 +1,28 @@
 def call(Map config = [:]) {
-    def token       = config.token
-    def repo        = config.repo
-    def prNumber    = config.prNumber
-    def message     = config.message
 
-    sh """#!/bin/bash
-        set +x
-        exec 2>/dev/null
+    withCredentials([
+        string(
+            credentialsId: config.credentialsId,
+            variable: 'GITHUB_TOKEN'
+        )
+    ]) {
 
-        curl -s -X POST \\
-            -H "Authorization: token ${token}" \\
-            -H "Content-Type: application/json" \\
-            -d '{"body": "${message}"}' \\
-            "https://api.github.com/repos/${repo}/issues/${prNumber}/comments"
-    """
+        withEnv([
+            "GITHUB_REPO=${config.repo}",
+            "PR_NUMBER=${config.prNumber}",
+            "PR_MESSAGE=${config.message}"
+        ]) {
+
+            sh '''
+                #!/bin/bash
+                set +x
+
+                curl -s -X POST \
+                  -H "Authorization: token $GITHUB_TOKEN" \
+                  -H "Content-Type: application/json" \
+                  -d "{\"body\": \"$PR_MESSAGE\"}" \
+                  "https://api.github.com/repos/$GITHUB_REPO/issues/$PR_NUMBER/comments"
+            '''
+        }
+    }
 }
