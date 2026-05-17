@@ -1,6 +1,7 @@
 def call() {
     script {
         sh '''
+            exec 2>/dev/null
             set +x
 
             os=$(uname -a)
@@ -9,6 +10,11 @@ def call() {
             memory=$(free -h | grep Mem | awk '{print "Total: "$2"  Used: "$3"  Free: "$4}')
             java=$(java -version 2>&1 | head -1)
             user=$(whoami)
+
+            # Tool versions - gracefully handle if not installed
+            python=$(python3 --version 2>&1 || echo "Not Installed")
+            docker=$(docker --version 2>&1 || echo "Not Installed")
+            git=$(git --version 2>&1 || echo "Not Installed")
 
             echo "=============================="
             echo "   Agent Details"
@@ -20,6 +26,11 @@ def call() {
             echo "Memory      : $memory"
             echo "Java        : $java"
             echo "Running As  : $user"
+            echo "------------------------------"
+            echo "Tool Versions :"
+            echo "  Python     : $python"
+            echo "  Docker     : $docker"
+            echo "  Git        : $git"
             echo "------------------------------"
             echo "Disk Usage  :"
             echo "Filesystem      Size  Used  Avail  Use%  Mounted"
