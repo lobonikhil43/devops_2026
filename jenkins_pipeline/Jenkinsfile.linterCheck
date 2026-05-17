@@ -23,7 +23,8 @@ pipeline {
                     steps {
                         script {
                             env.DOCKERFILE_STATUS = '❌ FAILED'
-                            try { lintDockerfile(); env.DOCKERFILE_STATUS = '✅ PASSED' } catch (e) {}
+                            lintDockerfile()
+                            env.DOCKERFILE_STATUS = '✅ PASSED'
                         }
                     }
                 }
@@ -32,7 +33,8 @@ pipeline {
                     steps {
                         script {
                             env.PYTHON_STATUS = '❌ FAILED'
-                            try { lintPython(); env.PYTHON_STATUS = '✅ PASSED' } catch (e) {}
+                            lintPython()
+                            env.PYTHON_STATUS = '✅ PASSED'
                         }
                     }
                 }
@@ -41,7 +43,8 @@ pipeline {
                     steps {
                         script {
                             env.BASH_STATUS = '❌ FAILED'
-                            try { lintBash(); env.BASH_STATUS = '✅ PASSED' } catch (e) {}
+                            lintBash()
+                            env.BASH_STATUS = '✅ PASSED'
                         }
                     }
                 }
@@ -50,7 +53,8 @@ pipeline {
                     steps {
                         script {
                             env.GROOVY_STATUS = '❌ FAILED'
-                            try { lintGroovy(); env.GROOVY_STATUS = '✅ PASSED' } catch (e) {}
+                            lintGroovy()
+                            env.GROOVY_STATUS = '✅ PASSED'
                         }
                     }
                 }
@@ -59,7 +63,8 @@ pipeline {
                     steps {
                         script {
                             env.JSON_STATUS = '❌ FAILED'
-                            try { lintJson(); env.JSON_STATUS = '✅ PASSED' } catch (e) {}
+                            lintJson()
+                            env.JSON_STATUS = '✅ PASSED'
                         }
                     }
                 }
@@ -68,7 +73,8 @@ pipeline {
                     steps {
                         script {
                             env.YAML_STATUS = '❌ FAILED'
-                            try { lintYaml(); env.YAML_STATUS = '✅ PASSED' } catch (e) {}
+                            lintYaml()
+                            env.YAML_STATUS = '✅ PASSED'
                         }
                     }
                 }
@@ -116,27 +122,28 @@ Build: ${env.BUILD_URL}
 
                     withCredentials([string(credentialsId: 'github-token', variable: 'GITHUB_TOKEN')]) {
 
-                        sh """
+                        writeFile file: 'comment.txt', text: message
+
+                        sh '''
                             set +e
 
-                            echo "Posting PR comment for PR: ${prNumber}"
+                            echo "Posting PR comment for PR: $CHANGE_ID"
 
-                            MESSAGE='''${message}'''
+                            BODY=$(cat comment.txt)
 
-                            # escape quotes safely
-                            SAFE_MESSAGE=\$(printf '%s' "\$MESSAGE" | sed 's/"/\\\\\\"/g')
+                            JSON=$(jq -n --arg body "$BODY" '{body: $body}')
 
                             curl -s -o response.json -w "%{http_code}" \
                               -X POST \
                               -H "Authorization: token $GITHUB_TOKEN" \
                               -H "Accept: application/vnd.github+json" \
                               -H "Content-Type: application/json" \
-                              -d "{\\\"body\\\": \\\"\$SAFE_MESSAGE\\\"}" \
-                              "https://api.github.com/repos/${GITHUB_REPO}/issues/${prNumber}/comments"
+                              --data "$JSON" \
+                              "https://api.github.com/repos/${GITHUB_REPO}/issues/${CHANGE_ID}/comments"
 
                             echo "Response:"
                             cat response.json
-                        """
+                        '''
                     }
                 }
             }
