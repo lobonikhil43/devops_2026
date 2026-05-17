@@ -1,0 +1,49 @@
+@Library('devops_2026') _
+
+pipeline {
+    agent { label 'builder' }
+
+    triggers {
+        githubPullRequest()
+    }
+
+    stages {
+        stage('Agent Details') {
+            steps {
+                agentDetails()
+            }
+        }
+
+        stage('Lint') {
+            parallel {
+                stage('Dockerfile') {
+                    steps { lintDockerfile() }
+                }
+                stage('Python') {
+                    steps { lintPython() }
+                }
+                stage('Bash') {
+                    steps { lintBash() }
+                }
+                stage('Groovy') {
+                    steps { lintGroovy() }
+                }
+                stage('JSON') {
+                    steps { lintJson() }
+                }
+                stage('YAML') {
+                    steps { lintYaml() }
+                }
+            }
+        }
+    }
+
+    post {
+        success {
+            echo 'All linting checks passed!'
+        }
+        failure {
+            echo 'Linting failed — please fix the errors!'
+        }
+    }
+}
