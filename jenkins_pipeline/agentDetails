@@ -1,0 +1,13 @@
+@Library('devops_2026') _
+
+pipeline {
+    agent any
+
+    stages {
+        stage('Agent Details') {
+            steps {
+                agentDetails()
+            }
+        }
+    }
+}

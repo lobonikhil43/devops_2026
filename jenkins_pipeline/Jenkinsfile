@@ -1,0 +1,40 @@
+@Library('devops_2026') _
+
+pipeline {
+    agent { label 'builder' }
+
+    parameters {
+        string(
+            name: 'REPO_URL',
+            defaultValue: '',
+            description: 'GitHub Repository URL'
+        )
+        string(
+            name: 'BRANCH',
+            defaultValue: '',
+            description: 'Branch to clone'
+        )
+        string(
+            name: 'CREDENTIALS_ID',
+            defaultValue: '',
+            description: 'Jenkins Credentials ID for GitHub'
+        )
+    }
+
+    stages {
+        stage('Agent Details') {
+            steps {
+                agentDetails()
+            }
+        }
+        stage('Clone Repo') {
+            steps {
+                gitClone(
+                    url: params.REPO_URL,
+                    branch: params.BRANCH,
+                    credentialsId: params.CREDENTIALS_ID
+                )
+            }
+        }
+    }
+}
