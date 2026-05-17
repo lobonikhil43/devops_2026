@@ -4,19 +4,8 @@ pipeline {
     agent { label 'builder' }
 
     environment {
-        GITHUB_TOKEN = credentials('github-token')
+        GITHUB_TOKEN = credentials('github-credentials')
         GITHUB_REPO  = 'lobonikhil43/devops_2026'
-    }
-
-    triggers {
-        githubPullRequest(
-            triggerPhrase: 'recheck',
-            useGitHubHooks: true,
-            permitAll: false,
-            whiteListTargetBranches: [
-                [branch: 'main']
-            ]
-        )
     }
 
     stages {
