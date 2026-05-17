@@ -1,8 +1,8 @@
 def call() {
     script {
-        sh '''
-            exec 2>/dev/null
+        sh '''#!/bin/bash
             set +x
+            exec 2>/dev/null
 
             os=$(uname -a)
             hostname=$(hostname)
@@ -11,7 +11,6 @@ def call() {
             java=$(java -version 2>&1 | head -1)
             user=$(whoami)
 
-            # Tool versions - gracefully handle if not installed
             python=$(python3 --version 2>&1 || echo "Not Installed")
             docker=$(docker --version 2>&1 || echo "Not Installed")
             git=$(git --version 2>&1 || echo "Not Installed")
