@@ -1,6 +1,8 @@
 def call() {
     script {
         sh '''
+            set +x
+
             os=$(uname -a)
             hostname=$(hostname)
             cpu=$(nproc)
@@ -11,7 +13,7 @@ def call() {
             echo "=============================="
             echo "   Agent Details"
             echo "=============================="
-            echo "Node Name   : $HOSTNAME"
+            echo "Node Name   : $hostname"
             echo "Workspace   : $WORKSPACE"
             echo "OS          : $os"
             echo "CPU Cores   : $cpu"
