@@ -1,0 +1,16 @@
+plugins {
+    id 'groovy'
+    id 'codenarc'
+}
+
+repositories {
+    mavenCentral()
+}
+
+codenarc {
+    toolVersion = '3.2.0'
+}
+
+codenarcMain {
+    configFile = file("config/codenarc/rules.groovy")
+}
