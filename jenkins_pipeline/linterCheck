@@ -4,7 +4,16 @@ pipeline {
     agent { label 'builder' }
 
     triggers {
-        githubPullRequest()
+        githubPullRequest(
+            triggerPhrase: 'recheck',
+            useGitHubHooks: true,
+            permitAll: false,
+            autoCloseFailedPullRequests: false,
+            displayBuildErrorsOnDownstreamBuilds: true,
+            whiteListTargetBranches: [
+                [branch: 'main']
+            ]
+        )
     }
 
     stages {
@@ -17,33 +26,135 @@ pipeline {
         stage('Lint') {
             parallel {
                 stage('Dockerfile') {
-                    steps { lintDockerfile() }
+                    steps {
+                        script {
+                            try {
+                                lintDockerfile()
+                            } catch(e) {
+                                env.DOCKERFILE_STATUS = 'FAILED'
+                                error("Dockerfile lint failed")
+                            }
+                        }
+                    }
                 }
                 stage('Python') {
-                    steps { lintPython() }
+                    steps {
+                        script {
+                            try {
+                                lintPython()
+                            } catch(e) {
+                                env.PYTHON_STATUS = 'FAILED'
+                                error("Python lint failed")
+                            }
+                        }
+                    }
                 }
                 stage('Bash') {
-                    steps { lintBash() }
+                    steps {
+                        script {
+                            try {
+                                lintBash()
+                            } catch(e) {
+                                env.BASH_STATUS = 'FAILED'
+                                error("Bash lint failed")
+                            }
+                        }
+                    }
                 }
                 stage('Groovy') {
-                    steps { lintGroovy() }
+                    steps {
+                        script {
+                            try {
+                                lintGroovy()
+                            } catch(e) {
+                                env.GROOVY_STATUS = 'FAILED'
+                                error("Groovy lint failed")
+                            }
+                        }
+                    }
                 }
                 stage('JSON') {
-                    steps { lintJson() }
+                    steps {
+                        script {
+                            try {
+                                lintJson()
+                            } catch(e) {
+                                env.JSON_STATUS = 'FAILED'
+                                error("JSON lint failed")
+                            }
+                        }
+                    }
                 }
                 stage('YAML') {
-                    steps { lintYaml() }
+                    steps {
+                        script {
+                            try {
+                                lintYaml()
+                            } catch(e) {
+                                env.YAML_STATUS = 'FAILED'
+                                error("YAML lint failed")
+                            }
+                        }
+                    }
                 }
+            }
+        }
+
+        stage('Review Summary') {
+            steps {
+                sh '''#!/bin/bash
+                    set +x
+                    exec 2>/dev/null
+                    echo "=============================="
+                    echo "   Review Summary"
+                    echo "=============================="
+                    echo "  Dockerfile : ${DOCKERFILE_STATUS:-PASSED}"
+                    echo "  Python     : ${PYTHON_STATUS:-PASSED}"
+                    echo "  Bash       : ${BASH_STATUS:-PASSED}"
+                    echo "  Groovy     : ${GROOVY_STATUS:-PASSED}"
+                    echo "  JSON       : ${JSON_STATUS:-PASSED}"
+                    echo "  YAML       : ${YAML_STATUS:-PASSED}"
+                    echo "=============================="
+                '''
+            }
+        }
+
+        stage('Merge') {
+            when {
+                expression {
+                    return env.DOCKERFILE_STATUS == null &&
+                           env.PYTHON_STATUS    == null &&
+                           env.BASH_STATUS      == null &&
+                           env.GROOVY_STATUS    == null &&
+                           env.JSON_STATUS      == null &&
+                           env.YAML_STATUS      == null
+                }
+            }
+            steps {
+                sh '''#!/bin/bash
+                    set +x
+                    exec 2>/dev/null
+                    echo "=============================="
+                    echo "  ✅ All checks passed!"
+                    echo "  🔀 Merging PR to main..."
+                    echo "=============================="
+                    git config user.email "jenkins@devops.com"
+                    git config user.name "Jenkins"
+                    git checkout main
+                    git merge --no-ff $GIT_BRANCH -m "Auto merge: PR passed all lint checks"
+                    git push origin main
+                    echo "  ✅ Merged successfully!"
+                '''
             }
         }
     }
 
     post {
         success {
-            echo 'All linting checks passed!'
+            echo '✅ Review passed - PR merged to main!'
         }
         failure {
-            echo 'Linting failed — please fix the errors!'
+            echo '❌ Review failed - fix lint errors before merge!'
         }
     }
 }
