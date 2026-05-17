@@ -7,23 +7,19 @@ def call(Map config = [:]) {
         )
     ]) {
 
-        sh """#!/bin/bash
-            set +e
-            set +x
+        def repo = config.repo
+        def prNumber = config.prNumber.toString().replace("PR-", "")
 
-            cat > payload.json <<EOF
-{
-  "body": ${groovy.json.JsonOutput.toJson(config.message)}
-}
-EOF
+        sh """#!/bin/bash
+            set +x
 
             response=\$(curl -s -o response.json -w "%{http_code}" \
                 -X POST \
                 -H "Authorization: Bearer \$GITHUB_TOKEN" \
                 -H "Accept: application/vnd.github+json" \
                 -H "Content-Type: application/json" \
-                --data @payload.json \
-                "https://api.github.com/repos/${config.repo}/issues/${config.prNumber}/comments")
+                -d '{"body": "${config.message.replace('"', '\\"')}"}' \
+                "https://api.github.com/repos/${repo}/issues/${prNumber}/comments")
 
             echo "GitHub API Status: \$response"
 
