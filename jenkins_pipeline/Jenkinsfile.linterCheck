@@ -5,6 +5,7 @@ pipeline {
 
     environment {
         GITHUB_REPO = 'lobonikhil43/devops_2026'
+        PATH = "$HOME/.local/bin:$PATH"
     }
 
     stages {
@@ -92,24 +93,24 @@ pipeline {
             }
         }
 
-        stage('PR Comment (GitHub Check Status)') {
+        stage('PR Comment') {
             steps {
                 script {
 
                     def allPassed =
-                        env.DOCKERFILE_STATUS?.contains('PASSED') &&
-                        env.PYTHON_STATUS?.contains('PASSED') &&
-                        env.BASH_STATUS?.contains('PASSED') &&
-                        env.GROOVY_STATUS?.contains('PASSED') &&
-                        env.JSON_STATUS?.contains('PASSED') &&
-                        env.YAML_STATUS?.contains('PASSED')
+                        (env.DOCKERFILE_STATUS ?: '').contains('PASSED') &&
+                        (env.PYTHON_STATUS ?: '').contains('PASSED') &&
+                        (env.BASH_STATUS ?: '').contains('PASSED') &&
+                        (env.GROOVY_STATUS ?: '').contains('PASSED') &&
+                        (env.JSON_STATUS ?: '').contains('PASSED') &&
+                        (env.YAML_STATUS ?: '').contains('PASSED')
 
                     def statusMsg = allPassed
                         ? "✅ All checks passed — ready for merge"
                         : "❌ Some checks failed — fix required"
 
                     def message = """
-## Jenkins Lint Report
+## 🔍 Jenkins Lint Report
 
 |    Type    |   Status  |
 |------------|-----------|
@@ -125,33 +126,26 @@ pipeline {
 Build: ${env.BUILD_URL}
 """.trim()
 
-                    githubComment(
-                        credentialsId: 'github-token',
-                        repo: env.GITHUB_REPO,
-                        prNumber: env.CHANGE_ID,
-                        message: message
-                    )
+                    withCredentials([string(credentialsId: 'github-token', variable: 'GITHUB_TOKEN')]) {
+
+                        sh '''
+                            set +e
+
+                            PAYLOAD=$(jq -n --arg msg "$MESSAGE" '{body: $msg}')
+
+                            curl -s -o response.json -w "%{http_code}" \
+                                -X POST \
+                                -H "Authorization: token $GITHUB_TOKEN" \
+                                -H "Accept: application/vnd.github+json" \
+                                -H "Content-Type: application/json" \
+                                -d "$PAYLOAD" \
+                                "https://api.github.com/repos/$GITHUB_REPO/issues/$CHANGE_ID/comments"
+
+                            echo "Response:"
+                            cat response.json
+                        '''
+                    }
                 }
-            }
-        }
-
-        stage('Auto Rebase Feature Branch (Optional)') {
-            when {
-                expression {
-                    return env.BRANCH_NAME != 'main'
-                }
-            }
-
-            steps {
-                sh '''
-                    set +e
-                    git config user.email "jenkins@local"
-                    git config user.name "jenkins-bot"
-
-                    git fetch origin main
-                    git checkout ${BRANCH_NAME}
-                    git rebase origin/main || true
-                '''
             }
         }
     }
@@ -163,12 +157,7 @@ Build: ${env.BUILD_URL}
 
         failure {
             script {
-                githubComment(
-                    credentialsId: 'github-token',
-                    repo: env.GITHUB_REPO,
-                    prNumber: env.CHANGE_ID,
-                    message: "❌ Build failed: ${env.BUILD_URL}"
-                )
+                echo "❌ Build failed: ${env.BUILD_URL}"
             }
         }
     }
