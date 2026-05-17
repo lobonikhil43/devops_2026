@@ -4,7 +4,6 @@ pipeline {
     agent { label 'builder' }
 
     environment {
-        GITHUB_TOKEN = credentials('github-credentials')
         GITHUB_REPO  = 'lobonikhil43/devops_2026'
         PATH = "$HOME/.local/bin:$PATH"
     }
@@ -121,7 +120,7 @@ pipeline {
                     """.trim()
 
                     githubComment(
-                        credentialsId : 'github-credentials',
+                        credentialsId : 'github-token',
                         repo          : env.GITHUB_REPO,
                         prNumber      : env.CHANGE_ID,
                         message       : message
@@ -149,8 +148,8 @@ pipeline {
                     echo "  ✅ All checks passed!"
                     echo "  🔀 Merging PR to main..."
                     echo "=============================="
-                    git config user.email "jenkins@devops.com"
-                    git config user.name "Jenkins"
+                    git config user.email "jenkins@local"
+                    git config user.name "jenkins-bot"
                     git checkout main
                     git merge --no-ff $GIT_BRANCH -m "Auto merge: all lint checks passed"
                     git push origin main
@@ -167,7 +166,7 @@ pipeline {
         failure {
             script {
                 githubComment(
-                    credentialsId : 'github-credentials',
+                    credentialsId : 'github-token',
                     repo          : env.GITHUB_REPO,
                     prNumber      : env.CHANGE_ID,
                     message       : '❌ Jenkins build failed — check build logs: ' + env.BUILD_URL
